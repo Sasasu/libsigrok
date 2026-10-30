@@ -379,6 +379,17 @@ shared_ptr<Packet> Context::create_analog_packet(
 	return shared_ptr<Packet>{new Packet{nullptr, packet}, default_delete<Packet>{}};
 }
 
+/* Keep the symbol used by clients built before data_pointer became const. */
+shared_ptr<Packet> Context::create_analog_packet(
+	vector<shared_ptr<Channel> > channels,
+	float *data_pointer, unsigned int num_samples, const Quantity *mq,
+	const Unit *unit, vector<const QuantityFlag *> mqflags)
+{
+	return create_analog_packet(move(channels),
+		static_cast<const float *>(data_pointer), num_samples, mq, unit,
+		move(mqflags));
+}
+
 shared_ptr<Packet> Context::create_end_packet()
 {
 	auto packet = g_new(struct sr_datafeed_packet, 1);

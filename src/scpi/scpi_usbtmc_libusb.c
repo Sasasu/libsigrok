@@ -150,7 +150,8 @@ static GSList *scpi_usbtmc_libusb_scan(struct drv_context *drvc)
 				intfdes = confdes->interface[intfidx].altsetting;
 				if (intfdes->bInterfaceClass    != LIBUSB_CLASS_APPLICATION ||
 				    intfdes->bInterfaceSubClass != SUBCLASS_USBTMC          ||
-				    intfdes->bInterfaceProtocol != USBTMC_USB488)
+				    (intfdes->bInterfaceProtocol != 0 &&
+				     intfdes->bInterfaceProtocol != USBTMC_USB488))
 					continue;
 				sr_dbg("Found USBTMC device (VID:PID = %04x:%04x, "
 				       "bus.address = %d.%d).", des.idVendor, des.idProduct,
@@ -323,7 +324,8 @@ static int scpi_usbtmc_libusb_open(struct sr_scpi_dev_inst *scpi)
 			intfdes = confdes->interface[intfidx].altsetting;
 			if (intfdes->bInterfaceClass    != LIBUSB_CLASS_APPLICATION ||
 			    intfdes->bInterfaceSubClass != SUBCLASS_USBTMC ||
-			    intfdes->bInterfaceProtocol != USBTMC_USB488)
+			    (intfdes->bInterfaceProtocol != 0 &&
+			     intfdes->bInterfaceProtocol != USBTMC_USB488))
 				continue;
 			uscpi->interface = intfdes->bInterfaceNumber;
 			config = confdes->bConfigurationValue;

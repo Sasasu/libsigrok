@@ -286,6 +286,11 @@ public:
 		std::vector<std::shared_ptr<Channel> > channels,
 		const float *data_pointer, unsigned int num_samples, const Quantity *mq,
 		const Unit *unit, std::vector<const QuantityFlag *> mqflags);
+	/** Create an analog packet (compatibility with the mutable-data API). */
+	std::shared_ptr<Packet> create_analog_packet(
+		std::vector<std::shared_ptr<Channel> > channels,
+		float *data_pointer, unsigned int num_samples, const Quantity *mq,
+		const Unit *unit, std::vector<const QuantityFlag *> mqflags);
 	/** Create an end packet. */
 	std::shared_ptr<Packet> create_end_packet();
 	/** Load a saved session.

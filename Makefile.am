@@ -436,6 +436,23 @@ src_libdrivers_la_SOURCES += \
 	src/hardware/hantek-dso/protocol.c \
 	src/hardware/hantek-dso/api.c
 endif
+if HW_OWON_HDS200
+src_libdrivers_la_SOURCES += \
+	src/hardware/owon-hds200/api.c \
+	src/hardware/owon-hds200/protocol.c \
+	src/hardware/owon-hds200/waveform.c \
+	src/hardware/owon-hds200/protocol.h
+endif
+
+if HW_HANTEK_DSO3000A
+src_libdrivers_la_SOURCES += \
+	src/hardware/hantek-dso3000a/protocol.h \
+	src/hardware/hantek-dso3000a/protocol.c \
+	src/hardware/hantek-dso3000a/generator.c \
+	src/hardware/hantek-dso3000a/controls.c \
+	src/hardware/hantek-dso3000a/waveform.c \
+	src/hardware/hantek-dso3000a/api.c
+endif
 if HW_HP_3457A
 src_libdrivers_la_SOURCES += \
 	src/hardware/hp-3457a/protocol.h \
@@ -869,6 +886,7 @@ EXTRA_DIST = \
 if HAVE_CHECK
 TESTS = tests/main
 check_PROGRAMS = ${TESTS}
+TESTS += tests/main
 endif
 
 tests_main_SOURCES = \

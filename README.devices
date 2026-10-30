@@ -667,3 +667,77 @@ Example:
 
   $ sigrok-cli -c channel_config="Aux;0.1/T" --driver mooshimeter-dmm...
   $ sigrok-cli -c channel_config="A;;AC/V;;AC" --driver mooshimeter-dmm...
+
+Hantek DSO3000A series
+---------------------
+
+The hantek-dso3000a driver supports the DSO3254A through USBTMC, including
+four analog channels, sixteen digital channels and the waveform generator.
+
+The default data_source=Screen reads 1600-point display waveforms.
+data_source=Memory arms a single hardware acquisition, waits for its trigger
+and completion, then downloads the complete memory in chunks. Subsequent
+frames rearm the scope; acquisition does not continue during the download.
+The buffersize option selects 1600, 16000, 160000, 1600000, 16000000,
+32000000, 64000000 or 128000000 samples per channel. Large downloads can
+be slow. Sample/time limits can stop a download early; a frame limit counts
+complete acquisitions rather than USB packets.
+
+Examples (USB bus and address are shown by lsusb):
+
+  sigrok-cli -d hantek-dso3000a:conn=usbtmc/3.3 --frames 1 -o capture.sr
+  sigrok-cli -d hantek-dso3000a -C CH1,D0,D8 --samples 1600 -o mixed.sr
+  sigrok-cli -d hantek-dso3000a -C CH1,CH2 \
+    -c data_source=Memory:buffersize=160000 --frames 1 -o memory.sr
+
+Edge triggering supports triggersource=CH1/CH2/CH3/CH4/EXT/10,
+triggerslope=r/f/e (rising, falling or either edge) and triggerlevel in volts.
+--frames 1 selects a hardware single acquisition also for Screen data.
+Without a matching trigger it waits until stopped or a time limit expires.
+Other Screen acquisitions retain the device's Auto/Normal sweep setting
+(a previous Single setting is replaced with Auto). Stopping acquisition
+restores the original sweep setting and leaves the scope stopped.
+
+  sigrok-cli -d hantek-dso3000a -C CH2 \
+    -c triggersource=CH2:triggerslope=r:triggerlevel=0.3 \
+    --frames 1 --time 5s -o triggered.sr
+
+The sample rate follows the scope timebase. Analog channel groups expose
+volts/div, coupling, probe factor, offset in volts, inverted (waveform
+inversion) and filter (20 MHz bandwidth limit). Offset is limited to five
+vertical divisions in either direction. Control settings are read back to
+detect firmware rejection or clamping. Change acquisition controls while
+stopped. Channel selection enables/disables the corresponding inputs when
+starting acquisition.
+
+The POD1 (D0-D7) and POD2 (D8-D15) groups independently expose
+logic_threshold_custom in volts. Digital samples use two bytes, with D0
+in bit 0 and D15 in bit 15.
+
+  sigrok-cli -d hantek-dso3000a -g CH2 \
+    -c offset=0.2:inverted=false:filter=true --set
+  sigrok-cli -d hantek-dso3000a -g POD1 -c logic_threshold_custom=1.8 --set
+  sigrok-cli -d hantek-dso3000a -g POD2 -c logic_threshold_custom=3.3 --set
+
+These controls use libsigrok configuration keys; frontend support for
+displaying every option varies. The channel-trigger (-t) API is not used.
+
+The WG channel group controls the independent generator. It supports
+Sine, Square, Ramp, Trapezoid, DC, Exponential and Gaussian patterns,
+output_frequency in integer Hz, amplitude and offset in volts (1 mV steps),
+and output_duty_cycle in integer percent for Square, Ramp and Trapezoid.
+Amplitude is the device's peak amplitude setting, not peak-to-peak voltage.
+Frequency is limited to 1 Hz through 25 MHz; amplitude to 0 through 3.5 V
+and offset to -3.5 through 3.5 V. Settings are read back to detect firmware
+rejection or clamping. Firmware 20200420A rejects negative offsets.
+Modulation, arbitrary waveform uploads and waveform-specific shape
+parameters are not implemented.
+
+Configure the generator, then explicitly enable its output:
+
+  sigrok-cli -d hantek-dso3000a -g WG \
+    -c pattern=Sine:output_frequency=1000:amplitude=0.5:offset=0 --set
+  sigrok-cli -d hantek-dso3000a -g WG -c enabled=true --set
+  sigrok-cli -d hantek-dso3000a -g WG -c enabled=false --set
+
+Scope acquisition start/stop does not change the generator output state.
