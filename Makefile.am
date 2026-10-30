@@ -439,6 +439,8 @@ endif
 if HW_OWON_HDS200
 src_libdrivers_la_SOURCES += \
 	src/hardware/owon-hds200/api.c \
+	src/hardware/owon-hds200/controls.c \
+	src/hardware/owon-hds200/dmm.c \
 	src/hardware/owon-hds200/protocol.c \
 	src/hardware/owon-hds200/waveform.c \
 	src/hardware/owon-hds200/protocol.h

@@ -741,3 +741,128 @@ Configure the generator, then explicitly enable its output:
   sigrok-cli -d hantek-dso3000a -g WG -c enabled=false --set
 
 Scope acquisition start/stop does not change the generator output state.
+
+OWON HDS200
+-----------
+
+The owon-hds200 driver supports the HDS2202S in USB HID mode, tested on
+firmware V2.5.1. This mode actually exposes bulk endpoints 0x01/0x81 at
+VID:PID 5345:1234. Other OWON families share that USB ID, so the driver
+verifies *IDN?. libusb automatically detaches and reattaches the kernel
+driver. Bulk endpoint halts are cleared when opening, since rebinding the
+kernel OWON serial driver can leave them stalled. Building requires libusb
+and json-c >= 0.13.
+
+Examples:
+
+  sigrok-cli -d owon-hds200 --scan
+  sigrok-cli -d owon-hds200 -C CH1,CH2 --frames 1 --time 2000 -o capture.sr
+  sigrok-cli -d owon-hds200 -c timebase=500us --frames 10 -o frames.sr
+  sigrok-cli -d owon-hds200 -g CH2 -c probe_factor=1:vdiv=500mV --set
+  sigrok-cli -d owon-hds200 \
+    -c triggersource=CH2:triggerslope=f:triggerlevel=0:device_mode=Single --set
+  sigrok-cli -d owon-hds200 -g Trigger -c coupling=DC --set
+  sigrok-cli -d owon-hds200 -g WG \
+    -c pattern=Sine:output_frequency=1000:amplitude=1:offset=0 --set
+  sigrok-cli -d owon-hds200 -g WG -c enabled=true --set
+  sigrok-cli -d owon-hds200 -g WG -c enabled=false --set
+
+Oscilloscope:
+- Two analog channels, selected via the frontend; acquisition applies that
+  selection to the device. Frame/sample/time limits are supported.
+- Timebase: 2 ns/div through 1 s/div. Per-channel volts/div, coupling and
+  probe factor are configurable. Probe factors: 1, 10, 100 and 1000.
+- Edge trigger source CH1/CH2, rising/falling edge and level in volts.
+  device_mode selects Auto, Normal or Single. The Trigger group controls
+  AC/DC trigger coupling. Settings are verified by readback.
+- A one-frame request arms a new Single acquisition, waits for STOP, then
+  lets the screen buffer settle before fetching both channels. A timeout
+  with no trigger does not emit an old waveform. The prior run/sweep state
+  is restored when acquisition stops normally. For repeated Single frames,
+  each frame is re-armed. Normal mode waits while trigger status is READY.
+- In Auto mode, repeated frames are screen snapshots, not a gap-free data
+  stream. Running-mode channel downloads are sequential. Single capture
+  freezes the acquisition for a consistent two-channel snapshot.
+- buffersize selects 4000 or 8000 INTERNAL acquisition points. Export is
+  still the screen waveform (normally 300 effective display points).
+  Deep-memory download is intentionally not implemented. Peak detection
+  is currently rejected rather than decoded as ordinary samples.
+
+Generator (WG group):
+- Sine, Square, Ramp and Pulse; output enable, frequency in Hz, amplitude
+  in Vpp and DC offset in volts. Pulse also exposes output_duty_cycle in
+  percent. Limits depend on waveform and the current output load setting.
+- Sine: 0.1 Hz to 25 MHz; Square/Pulse: to 5 MHz; Ramp: to 1 MHz.
+- Amplitude/offset are validated against the output envelope and settings
+  are read back. Scope acquisition does not toggle generator output.
+- Arbitrary waveform uploads, the eight preset arbitrary shapes, ramp
+  symmetry and pulse rise/fall-time controls are not exposed by this driver.
+
+Multimeter:
+- The owon-hds200-dmm driver exposes the separate meter input as one DMM
+  analog channel. It is built together with owon-hds200. Use one driver
+  at a time for a given instrument; scope and meter acquisition are separate.
+- Select DMM mode and the measurement function on the instrument first.
+  Acquisition only queries the device; it does not change the function,
+  range, relative setting, run/hold state or waveform generator output.
+- Supported readout functions: DC/AC voltage, DC/AC current, resistance,
+  capacitance, diode voltage and continuity resistance. Values are emitted
+  in V, A, ohms or F with the corresponding measurement flags. No probe
+  factor or calibration coefficient is applied to meter readings.
+- measured_quantity and range are read-only. Relative mode is reported
+  for DC voltage/current and resistance. Remote function/range selection,
+  automatic-range status and hold status are not exposed.
+- Polling uses a 500 ms timer plus USB query overhead. These are displayed
+  readings, not a uniformly sampled waveform or the ADC conversion rate.
+  Each reading is one sample. Sample and time limits work.
+  Function, range and relative state are checked around each reading;
+  a reading spanning a detected setting change is discarded.
+- Keep the instrument in DMM mode for live readings. In scope mode or
+  hold, the firmware may return the last meter reading; the protocol has
+  no verified freshness indicator, so the driver cannot identify stale
+  readings or attach a hold flag.
+- DC voltage was checked on V2.5.1: USB returned 3.8350 V while the display
+  showed 3.835 V on the 20 V range. Other functions follow the published
+  DMM command protocol and have not been individually hardware-validated.
+
+Examples (select the measurement function using the front panel):
+
+  sigrok-cli -d owon-hds200-dmm --scan
+  sigrok-cli -d owon-hds200-dmm --show
+  sigrok-cli -d owon-hds200-dmm --get measured_quantity
+  sigrok-cli -d owon-hds200-dmm --get range
+  sigrok-cli -d owon-hds200-dmm --samples 10 -O analog
+  sigrok-cli -d owon-hds200-dmm --time 10s -O csv -o meter.csv
+
+The CSV exporter may log that samplerate is unavailable. Values and units
+are still exported; no fixed-rate timestamps are provided.
+
+Scope automatic measurements (frequency, period, extrema, peak-to-peak,
+amplitude and average) and file/screenshot storage are listed in the manual
+but are not exported as additional channels here.
+
+Protocol notes for V2.5.1:
+- Newline-terminated SCPI text; text replies end in newline. Allow the
+  firmware to process commands between writes. Queries are bounded by a
+  deadline and binary blocks by their advertised length and capacity.
+- DATA:WAVE:SCREEN replies start with a four-byte little-endian payload
+  length, then JSON (HEAD?) or waveform bytes (CH1?/CH2?).
+- JSON names are case-insensitive. DATALEN and FULLSCREEN count horizontal
+  byte coordinates. For the 600-byte waveform, the vendor PC software uses
+  the signed first byte of each pair and duplicates it horizontally. This
+  driver emits each of the 300 display points once. A pair is not int16.
+- Export rate = FULLSCREEN / (24 * timebase_seconds). SAMPLERATE describes
+  internal acquisition, not decimated screen output. Only integral export
+  rates are supported.
+- Voltage = (signed_code - OFFSET) * SCALE / 25. On this firmware SCALE
+  already includes the configured probe factor. This was checked using
+  OUT to CH2 with a 1X probe; do not multiply the probe factor twice.
+- The working trigger commands differ from the PDF: source uses
+  TRIG:SING:EDGE:SOUR; sweep uses TRIG:SWE; coupling uses TRIG:COUP.
+  ACQuire:DEPMem settings use lowercase 4k/8k; uppercase 4K is ignored.
+
+References:
+https://www.owon.com.hk/products_owon_hds200_series_digital_oscilloscope
+HDS200_Series_SCPI_Protocol.pdf and HDS200_series_user_manual.pdf
+OWON DS_Wave_HOS_1.2.11.1.v20240927 PC software, RapidDataImport.readData
+https://sigrok.org/wiki/Owon_SDS_series (different family, shared USB ID)

@@ -119,6 +119,8 @@ SR_ARG_OPT_PKG([libhidapi], [LIBHIDAPI], ,
 
 SR_ARG_OPT_PKG([libbluez], [LIBBLUEZ], , [bluez >= 4.0])
 
+SR_ARG_OPT_PKG([json-c], [JSON_C], , [json-c >= 0.13])
+
 SR_ARG_OPT_PKG([libnettle], [LIBNETTLE], , [nettle])
 
 # FreeBSD comes with an "integrated" libusb-1.0-style USB API.
@@ -369,6 +371,7 @@ SR_DRIVER([Mooshimeter DMM], [mooshimeter-dmm], [bluetooth_comm libgio])
 SR_DRIVER([Motech LPS 30x], [motech-lps-30x], [serial_comm])
 SR_DRIVER([Norma DMM], [norma-dmm], [serial_comm])
 SR_DRIVER([OpenBench Logic Sniffer], [openbench-logic-sniffer], [serial_comm])
+SR_DRIVER([OWON HDS200], [owon-hds200], [libusb json-c])
 SR_DRIVER([PCE PCE-322A], [pce-322a], [serial_comm])
 SR_DRIVER([Pipistrello-OLS], [pipistrello-ols], [libftdi])
 SR_DRIVER([RaspberryPI PICO], [raspberrypi-pico], [serial_comm])

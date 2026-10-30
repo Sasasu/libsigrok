@@ -382,4 +382,7 @@ ATTRS{idVendor}=="0c12", ATTRS{idProduct}=="7060", ENV{ID_SIGROK}="1"
 ATTRS{idVendor}=="0c12", ATTRS{idProduct}=="7064", ENV{ID_SIGROK}="1"
 ATTRS{idVendor}=="0c12", ATTRS{idProduct}=="7100", ENV{ID_SIGROK}="1"
 
+# OWON HDS200 (other OWON families share this ID).
+ATTRS{idVendor}=="5345", ATTRS{idProduct}=="1234", ENV{ID_SIGROK}="1"
+
 LABEL="libsigrok_rules_end"
